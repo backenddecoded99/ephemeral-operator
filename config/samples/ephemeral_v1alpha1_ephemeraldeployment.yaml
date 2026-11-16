@@ -1,0 +1,9 @@
+apiVersion: ephemeral.backenddecoded99.github.io/v1alpha1
+kind: EphemeralDeployment
+metadata:
+  labels:
+    app.kubernetes.io/name: ephemeral-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: ephemeraldeployment-sample
+spec:
+  # TODO(user): Add fields here
