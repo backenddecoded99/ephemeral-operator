@@ -1,0 +1,10 @@
+apiVersion: ephemeral.backenddecoded99.github.io/v1alpha1
+kind: EphemeralDeployment
+metadata:
+  name: pr-142-preview
+spec:
+  ttlSeconds: 60
+  workload:
+    image: nginx:1.27
+    replicas: 1
+    port: 80

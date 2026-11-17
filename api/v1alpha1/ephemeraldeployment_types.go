@@ -18,79 +18,97 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+// EphemeralDeploymentPhase describes the lifecycle phase.
+// +kubebuilder:validation:Enum=Pending;Active;Expiring;Terminating
+type EphemeralDeploymentPhase string
 
-// EphemeralDeploymentSpec defines the desired state of EphemeralDeployment
-type EphemeralDeploymentSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-	// The following markers will use OpenAPI v3 schema to validate the value
-	// More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
+const (
+	PhasePending     EphemeralDeploymentPhase = "Pending"
+	PhaseActive      EphemeralDeploymentPhase = "Active"
+	PhaseExpiring    EphemeralDeploymentPhase = "Expiring"
+	PhaseTerminating EphemeralDeploymentPhase = "Terminating"
+)
 
-	// foo is an example field of EphemeralDeployment. Edit ephemeraldeployment_types.go to remove/update
+// WorkloadSpec is the minimal workload the operator runs.
+type WorkloadSpec struct {
+	// Container image to run.
+	// +kubebuilder:validation:MinLength=1
+	Image string `json:"image"`
+
+	// Number of replicas.
+	// +kubebuilder:default=1
+	// +kubebuilder:validation:Minimum=0
 	// +optional
-	Foo *string `json:"foo,omitempty"`
+	Replicas *int32 `json:"replicas,omitempty"`
+
+	// Container port to expose.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
+	// +optional
+	Port int32 `json:"port,omitempty"`
 }
 
-// EphemeralDeploymentStatus defines the observed state of EphemeralDeployment.
+// EphemeralDeploymentSpec defines the desired state.
+type EphemeralDeploymentSpec struct {
+	// Seconds after creation before the environment is removed.
+	// +kubebuilder:validation:Minimum=10
+	// +kubebuilder:validation:Required
+	TTLSeconds int64 `json:"ttlSeconds"`
+
+	// Workload to run for the lifetime of this object.
+	// +kubebuilder:validation:Required
+	Workload WorkloadSpec `json:"workload"`
+}
+
+// EphemeralDeploymentStatus defines the observed state.
 type EphemeralDeploymentStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Current lifecycle phase.
+	// +optional
+	Phase EphemeralDeploymentPhase `json:"phase,omitempty"`
 
-	// For Kubernetes API conventions, see:
-	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
+	// When the environment expires: creationTimestamp + ttlSeconds.
+	// +optional
+	ExpiresAt *metav1.Time `json:"expiresAt,omitempty"`
 
-	// conditions represent the current state of the EphemeralDeployment resource.
-	// Each condition has a unique type and reflects the status of a specific aspect of the resource.
-	//
-	// Standard condition types include:
-	// - "Available": the resource is fully functional
-	// - "Progressing": the resource is being created or updated
-	// - "Degraded": the resource failed to reach or maintain its desired state
-	//
-	// The status of each condition is one of True, False, or Unknown.
+	// The spec generation these conditions reflect.
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// Latest observations of the object's state.
+	// +patchMergeKey=type
+	// +patchStrategy=merge
 	// +listType=map
 	// +listMapKey=type
 	// +optional
-	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
+// +kubebuilder:printcolumn:name="Expires At",type="string",JSONPath=".status.expiresAt"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
-// EphemeralDeployment is the Schema for the ephemeraldeployments API
+// EphemeralDeployment is the Schema for the ephemeraldeployments API.
 type EphemeralDeployment struct {
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// metadata is a standard object metadata
-	// +optional
-	metav1.ObjectMeta `json:"metadata,omitzero"`
-
-	// spec defines the desired state of EphemeralDeployment
-	// +required
-	Spec EphemeralDeploymentSpec `json:"spec"`
-
-	// status defines the observed state of EphemeralDeployment
-	// +optional
-	Status EphemeralDeploymentStatus `json:"status,omitzero"`
+	Spec   EphemeralDeploymentSpec   `json:"spec,omitempty"`
+	Status EphemeralDeploymentStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// EphemeralDeploymentList contains a list of EphemeralDeployment
+// EphemeralDeploymentList contains a list of EphemeralDeployment.
 type EphemeralDeploymentList struct {
 	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitzero"`
+	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []EphemeralDeployment `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(func(s *runtime.Scheme) error {
-		s.AddKnownTypes(SchemeGroupVersion, &EphemeralDeployment{}, &EphemeralDeploymentList{})
-		return nil
-	})
+	SchemeBuilder.Register(&EphemeralDeployment{}, &EphemeralDeploymentList{})
 }

@@ -23,6 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	crscheme "sigs.k8s.io/controller-runtime/pkg/scheme"
 )
 
 var (
@@ -34,11 +35,14 @@ var (
 	GroupVersion = SchemeGroupVersion
 
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme.
-	SchemeBuilder = runtime.NewSchemeBuilder(func(scheme *runtime.Scheme) error {
-		metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
-		return nil
-	})
+	// Uses controller-runtime's scheme.Builder so Register() accepts runtime.Objects.
+	SchemeBuilder = &crscheme.Builder{GroupVersion: GroupVersion}
 
 	// AddToScheme adds the types in this group-version to the given scheme.
 	AddToScheme = SchemeBuilder.AddToScheme
 )
+
+// addGroupVersion registers the group version into the scheme (called by AddToScheme).
+func init() {
+	metav1.AddToGroupVersion(runtime.NewScheme(), SchemeGroupVersion)
+}
